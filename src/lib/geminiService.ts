@@ -1,8 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
-// Try to get the API key from standard Vite env vars first (VITE_GEMINI_API_KEY)
-// Fallback to exactly process.env.GEMINI_API_KEY mapped via vite.config.ts 'define'
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '') || "";
 const genAI = new GoogleGenerativeAI(apiKey);
 
 export interface GeminiResponse {
