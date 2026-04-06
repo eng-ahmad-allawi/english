@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './components/ui/dropdown-menu';
 import { Badge } from './components/ui/badge';
-import { Moon, Sun, Plus, Search, MoreVertical, Trash, Edit, FolderInput, Loader2, ChevronDown, ChevronUp, FolderPlus, BarChart2, BookOpen, Target, Volume2, Download, Upload, Trash2 } from 'lucide-react';
+import { Moon, Sun, Plus, Search, MoreVertical, Trash, Edit, FolderInput, Loader2, ChevronDown, ChevronUp, FolderPlus, BarChart2, BookOpen, Target, Volume2, Download, Upload, Trash2, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function ThemeToggle() {
@@ -245,6 +245,18 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
+  const handleCopyAllWords = async () => {
+    if (words.length === 0) return;
+    const wordsList = words.map(w => w.word).join('\n');
+    try {
+      await navigator.clipboard.writeText(wordsList);
+      alert("تم نسخ جميع الكلمات بنجاح!");
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      alert("حدث خطأ أثناء النسخ");
+    }
+  };
+
   const handleExport = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(words));
     const downloadAnchorNode = document.createElement('a');
@@ -351,8 +363,11 @@ export default function App() {
                 <Button variant="ghost" size="icon" title="Import JSON" onClick={() => fileInputRef.current?.click()}>
                   <Upload className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" title="Export JSON" onClick={handleExport}>
+                <Button variant="ghost" size="icon" title="Export JSON Backup" onClick={handleExport}>
                   <Download className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" title="Copy Text List" onClick={handleCopyAllWords}>
+                  <Copy className="h-5 w-5" />
                 </Button>
                 <Button variant="ghost" size="icon" title="Delete All" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleteAllDialog(true)}>
                   <Trash2 className="h-5 w-5" />
