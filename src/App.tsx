@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './components/ui/dropdown-menu';
 import { Badge } from './components/ui/badge';
-import { Moon, Sun, Plus, Search, MoreVertical, Trash, Edit, FolderInput, Loader2, ChevronDown, ChevronUp, FolderPlus, BarChart2, BookOpen, Target } from 'lucide-react';
+import { Moon, Sun, Plus, Search, MoreVertical, Trash, Edit, FolderInput, Loader2, ChevronDown, ChevronUp, FolderPlus, BarChart2, BookOpen, Target, Volume2, Download, Upload, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function ThemeToggle() {
@@ -55,6 +55,8 @@ export default function App() {
   const [detailsDialog, setDetailsDialog] = useState<{ isOpen: boolean; word: WordEntry | null }>({ isOpen: false, word: null });
   const [moveDialog, setMoveDialog] = useState<{ isOpen: boolean; word: WordEntry | null }>({ isOpen: false, word: null });
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; wordId: string | null }>({ isOpen: false, wordId: null });
+  const [deleteAllDialog, setDeleteAllDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [highlightedWordId, setHighlightedWordId] = useState<string | null>(null);
@@ -236,6 +238,47 @@ export default function App() {
     setNewCatIcon('📁');
   };
 
+  const playAudio = (text: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(words));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "vocabulary-export.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedWords = JSON.parse(event.target?.result as string);
+        if (Array.isArray(importedWords)) {
+          setWords(importedWords);
+        }
+      } catch (err) {
+        console.error("Failed to import words", err);
+        alert("Failed to import vocabulary. Invalid JSON file.");
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDeleteAll = () => {
+    setWords([]);
+    setDeleteAllDialog(false);
+  };
+
   const filteredWords = words.filter(w => 
     w.word.toLowerCase().includes(searchQuery.toLowerCase()) || 
     w.translation.toLowerCase().includes(searchQuery.toLowerCase())
@@ -298,10 +341,27 @@ export default function App() {
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-bold tracking-tight">Vocab Manager</h1>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => { setShowFocusMode(!showFocusMode); setShowStats(false); }}>
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleImport}
+                />
+                <Button variant="ghost" size="icon" title="Import JSON" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" title="Export JSON" onClick={handleExport}>
+                  <Download className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" title="Delete All" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleteAllDialog(true)}>
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+                <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
+                <Button variant="ghost" size="icon" title="Focus Mode" onClick={() => { setShowFocusMode(!showFocusMode); setShowStats(false); }}>
                   <Target className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => { setShowStats(!showStats); setShowFocusMode(false); }}>
+                <Button variant="ghost" size="icon" title="Statistics" onClick={() => { setShowStats(!showStats); setShowFocusMode(false); }}>
                   <BarChart2 className="h-5 w-5" />
                 </Button>
                 <div className="relative w-64 hidden sm:block">
@@ -379,8 +439,13 @@ export default function App() {
                       </h3>
                       <ul className="flex flex-col gap-1">
                         {categoryWords.map(word => (
-                          <li key={word.id} className="flex justify-between items-center hover:bg-muted/50 px-2 py-1.5 rounded transition-colors">
-                            <span className="font-medium text-base">{word.word}</span>
+                          <li key={word.id} className="flex justify-between items-center hover:bg-muted/50 px-2 py-1.5 rounded transition-colors group cursor-default">
+                            <span className="font-medium text-base flex items-center gap-2">
+                              {word.word}
+                              <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => playAudio(word.word, e)}>
+                                <Volume2 className="h-3 w-3" />
+                              </Button>
+                            </span>
                             <span className="text-muted-foreground text-sm" dir="rtl">{word.translation}</span>
                           </li>
                         ))}
@@ -528,7 +593,12 @@ export default function App() {
                                 className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
                               >
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                                  <span className="font-medium text-lg">{highlightText(word.word, searchQuery)}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-lg">{highlightText(word.word, searchQuery)}</span>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" onClick={(e) => playAudio(word.word, e)}>
+                                      <Volume2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                   {word.translation && (
                                     <span className="text-muted-foreground" dir="rtl">{highlightText(word.translation, searchQuery)}</span>
                                   )}
@@ -601,6 +671,22 @@ export default function App() {
                   setDeleteDialog({ isOpen: false, wordId: null });
                 }
               }}>Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete All Confirmation Dialog */}
+        <Dialog open={deleteAllDialog} onOpenChange={setDeleteAllDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete All Words</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete <span className="font-bold text-destructive">ALL</span> saved words? This action cannot be undone. We recommend exporting a backup first.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+              <Button variant="outline" onClick={() => setDeleteAllDialog(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteAll}>Delete All</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -726,7 +812,12 @@ export default function App() {
               <div className="space-y-6 my-2">
                 <div className="flex items-center justify-between border-b pb-4">
                   <div>
-                    <h3 className="text-2xl font-bold text-primary">{detailsDialog.word.word}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-2xl font-bold text-primary">{detailsDialog.word.word}</h3>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={(e) => playAudio(detailsDialog.word!.word, e)}>
+                        <Volume2 className="h-5 w-5" />
+                      </Button>
+                    </div>
                     <p className="text-lg text-muted-foreground" dir="rtl">{detailsDialog.word.translation}</p>
                   </div>
                   <Badge variant="secondary" className="text-sm">
